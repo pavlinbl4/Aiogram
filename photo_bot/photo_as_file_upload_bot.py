@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import sys
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.client.default import DefaultBotProperties
@@ -12,30 +11,27 @@ from aiogram.utils.markdown import hbold
 from get_credentials import Credentials
 from icecream import ic
 
+# Configuration
 TOKEN = Credentials().pavlinbl4_bot
+ALLOWED_USER_IDS = {123456789, 987654321, 1237220337, 187597961}
 
-# All handlers should be attached to the Router (or Dispatcher)
+# Initialize Bot and Dispatcher
+bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-# Initialize Bot instance with a default parse mode which will be passed to all API calls
-bot = Bot(TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-
-# Define a list of allowed user IDs
-allowed_user_ids = {123456789, 987654321, 1237220337, 187597961}
+# Logging setup
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    """
-    This handler receives messages with `/start` command
-    """
     await message.answer(f"Я бот помогающий добавлять фотографии в архив!\n"
                          f"Отправьте фото «как файл», чтоб сохранить качество\n"
                          f"снимка"
                          )
 
 
-@dp.message(F.from_user.id.in_(allowed_user_ids))
+@dp.message(F.from_user.id.in_(ALLOWED_USER_IDS))
 async def handle_allowed_user_messages(message: types.Message):
     if message.document is None:
         await message.answer(f"Отправьте фото «как файл», чтоб сохранить качество\n"
@@ -50,11 +46,13 @@ async def handle_allowed_user_messages(message: types.Message):
         file_path = file.file_path
 
         allowed_files_type = {'image/jpeg',
+                              'image/png',
                               }
 
         if uploaded_file.mime_type in allowed_files_type:
-        # save file to hdd
-            await bot.download_file(file_path, f"../DownloadedFiles/{file_id}.jpg")
+
+            # save file to hdd
+            await bot.download_file(file_path, f"../DownloadedFiles/{uploaded_file.file_name}.jpg")
 
             # send message to sender
             await message.answer(f"Hello, {hbold(message.from_user.full_name)}\n"
@@ -64,10 +62,14 @@ async def handle_allowed_user_messages(message: types.Message):
                                  f"file_type - {uploaded_file.mime_type}\n"
                                  # f"photo_id - {}\n"
                                  f"you are allowed user!")
+
+            ic(f'path to uploading image : ../DownloadedFiles/{uploaded_file.file_name}.jpg')
+
+
+
         else:
             await message.answer(f"Вы отправили недопустимый тип файла - {uploaded_file.mime_type}\n"
                                  f"я работаю только с фотографиями")
-
 
 
 @dp.message()
@@ -82,5 +84,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    # logging.basicConfig(level=logging.INFO, stream=sys.stdout)
     asyncio.run(main())
